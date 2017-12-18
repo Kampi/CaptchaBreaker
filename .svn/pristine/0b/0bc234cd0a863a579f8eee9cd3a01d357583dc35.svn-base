@@ -1,0 +1,137 @@
+import os
+import cv2
+import numpy
+from keras.optimizers import SGD
+from keras.models import load_model
+from keras.preprocessing.image import img_to_array
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+import matplotlib.pyplot as plt
+
+from .LeNet import LeNet
+
+class CaptchaSolver:
+
+    def __init__(self):
+        self.Network = LeNet()
+        self.TrainingData = []
+        self.TrainingLabel = []
+        self.TrainX = []
+        self.TrainY = []
+        self.TestX = []
+        self.TestY = []
+        self.LeNet = LeNet()
+        self.Model = 0
+        self.Binarizer = 0
+        self.Epochs = 0
+        self.History = 0
+        self.Labelcount = 0
+        self.Batchsize = 32
+
+    def Plot(self):
+        if(not(self.History == 0)):
+            plt.style.use("ggplot")
+            plt.figure(num = "Training")
+            plt.plot(numpy.arange(0, self.Epochs), self.History.history["loss"], label = "Train (Loss)")
+            plt.plot(numpy.arange(0, self.Epochs), self.History.history["val_loss"], label = "Test (Loss)")
+            plt.plot(numpy.arange(0, self.Epochs), self.History.history["acc"], label = "Accuracy")
+            plt.plot(numpy.arange(0, self.Epochs), self.History.history["val_acc"], label = "Test (Accuracy)")
+            plt.title("Loss and Accuracy")
+            plt.xlabel("Epoch #")
+            plt.ylabel("Loss/Accuracy")
+            plt.legend()
+            plt.show()
+        else:
+            print("[ERROR] No history available!")
+
+    def LoadModel(self, Path):
+        # Check if path exist
+        if(os.path.exists(Path)):
+            print("[INFO] Load model from disk...")
+            self.Model = load_model(Path)
+        else:
+            print("[ERROR] Unknown input path!")
+            return -1
+
+    def SaveModel(self, Path):
+        if(self.Model != 0):
+            print("[INFO] Save model as " + Path + " to disk...")
+            self.Model.save(Path)
+        else:
+            print("[ERROR] No model available!")
+
+    def LoadTrainingData(self, Path, SplitRatio = 0.25):
+        # Check if path exist
+        if(not(os.path.exists(Path))):
+            # Check if path is a directory
+            if(not(os.path.isdir(Path))):
+                print("[ERROR] Unknown input path!")
+                return -1
+
+        # Load the files from path
+        Folder = os.listdir(Path)
+        
+        print("[INFO] Found {} folder".format(len(Folder)))
+
+        for [FolderIndex, FolderName] in enumerate(Folder):
+            # Some status message
+            print(" [STATUS] Open folder {}/{}".format(FolderIndex + 1, len(Folder)))
+
+            # Get all the files from the chosen folder
+            Files_Folder = os.listdir(Path + "\\" + FolderName)
+
+            for [FileIndex, FileName] in enumerate(Files_Folder):
+                # Another status message
+                print("     [STATUS] Load file {}/{}".format(FileIndex + 1, len(FileName)))
+
+                # Load a image
+                Image = cv2.imread(Path + "\\" + FolderName + "\\" + FileName, 0)
+
+                # Convert it to an array for the neural network
+                Image = img_to_array(Image)
+                self.TrainingData.append(Image)
+            
+                # Store the image labels
+                self.TrainingLabel.append(FolderName)
+
+        # Count the different labels
+        self.Labelcount = len(set(self.TrainingLabel))
+
+        # Skale the data
+        print("[INFO] Scale images...")
+        self.TrainingData = numpy.array(self.TrainingData, dtype = "float") / 255.0
+
+        # Split the data into training and test data
+        print("[INFO] Split data...")
+        (self.TrainX, self.TestX, self.TrainY, self.TestY) = train_test_split(self.TrainingData, self.TrainingLabel, test_size = SplitRatio)
+
+        # Preprocess the labels
+        print("[INFO] Found {} label".format(self.Labelcount))
+        print("[INFO] Convert label...")
+        self.Binarizer = LabelBinarizer().fit(self.TrainingLabel)
+        self.TrainY = self.Binarizer.transform(self.TrainY)
+        self.TestY = self.Binarizer.transform(self.TestY)
+
+    def TrainModel(self, Width = 28, Height = 28, Depth = 1, Epochs = 30):
+        # Store Epochs count
+        self.Epochs = Epochs
+
+        if((not(len(self.TrainX) == 0)) and (not(len(self.TrainY) == 0))):
+            print("[INFO] Build LeNet...")
+            self.Model = self.LeNet.build(Width, Height, Depth, self.Labelcount)
+            self.Model.compile(loss = "categorical_crossentropy", optimizer = SGD(lr = 0.01), metrics = ["accuracy"])
+
+            print("[INFO] Train network...")
+            self.History = self.Model.fit(self.TrainX, self.TrainY, validation_data = (self.TestX, self.TestY), batch_size = self.Batchsize, epochs = self.Epochs, verbose = 1)
+
+            print("[INFO] Evaluate network...")
+            predictions = self.Model.predict(self.TestX, batch_size = 32)
+            print(classification_report(self.TestY.argmax(axis=1), predictions.argmax(axis=1), target_names=self.Binarizer.classes_))
+        else:
+            print("[ERROR] No data loaded!")
+
+    def Predict(self, Data):
+        # Create a new prediction
+        return self.Model.predict(Data, self.Batchsize).argmax(axis = 1)
+            

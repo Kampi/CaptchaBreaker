@@ -1,0 +1,2 @@
+from .CaptchaSolver import CaptchaSolver
+

@@ -1,0 +1,49 @@
+import sys
+import argparse
+
+import cv2
+
+from Preprocessing.Preprocessor import ImagePreprocessing
+from CaptchaSolver.CaptchaSolver import CaptchaSolver
+
+DemoFolder = "D:\\Dropbox\\GitHub\\Machine-Learning\\Captcha-Solver\\data\\"
+ModelPath = DemoFolder + "model\\CaptchaSolver.hdf5" 
+
+# Check the version of python
+if(sys.version_info <= (3, 6, 2)):
+    print("Python Version: {}".format(sys.version))
+    print("Version not supported!")
+    exit()
+
+ImageProcessor = ImagePreprocessing(28, 28)
+Solver = CaptchaSolver()
+
+# Set commandline arguments
+ArgParser = argparse.ArgumentParser()
+ArgParser.add_argument("-m", "--mode", choices = ["demo", "offline", "live"], help = "Select the application mode", default = "demo")
+ArgParser.add_argument("-w", "--model", choices = ["train", "load"], help = "Select if the CNN should be learned or loaded from file", default = "train")
+args = vars(ArgParser.parse_args())
+
+if(args["mode"] == "demo"):
+    print("Use demo mode")
+
+    if(args["model"] == "train"):
+        #ImageProcessor.ProcessImages(DemoFolder + "train", DemoFolder + "preprocessing")
+        #Solver.LoadTrainingData(DemoFolder + "preprocessing")
+        #Solver.TrainModel()
+        #Solver.SaveModel(ModelPath)
+        #Solver.Plot()
+        pass
+    else:
+        pass
+
+    Solver.LoadModel(ModelPath)
+
+    ImageList = ImageProcessor.ProcessImages(DemoFolder + "demo")
+    print("[INFO] Found {} Captcha Letter".format(len(ImageList)))
+
+    for Image in ImageList:
+        print(Solver.Predict(Image))
+
+else:
+    print("Use live mode")
