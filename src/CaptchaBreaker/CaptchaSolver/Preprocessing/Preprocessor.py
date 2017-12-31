@@ -27,9 +27,10 @@ class ImagePreprocessing:
         else:
             return ErrorCodes.UNKNOWN_PATH
 
-    def GetContours(self, Image):                
-        # Create a border with width of 8px around the image to prevent that the captcha touch the border of the image
-        Image = cv2.copyMakeBorder(Image, 8, 8, 8, 8, cv2.BORDER_REPLICATE)
+    def GetContours(self, Image, Border):             
+        
+        if(Border > 0):
+            Image = cv2.copyMakeBorder(Image, Border, Border, Border, Border, cv2.BORDER_REPLICATE)
 
         # Create a binary image
         [ret, BinaryImage] = cv2.threshold(Image, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
@@ -42,18 +43,18 @@ class ImagePreprocessing:
 
         return [BinaryImage, Contours]
 
-    def PreprocessImage(self, InputPath):
+    def PreprocessImage(self, InputPath, Border = 8):
         # Check if path exist
         if(not(os.path.exists(InputPath))):
             return ErrorCodes.UNKNOWN_PATH
 
-        # Load image as grayimage
-        Image = cv2.imread(InputPath, 0)
+        # Load image
+        Image = cv2.imread(InputPath)
 
-        # Convert the input image
-        return self.GetContours(Image)
+        # Convert the image to grayscale, add a border and search contours
+        return [Image] + self.GetContours(cv2.cvtColor(Image, cv2.COLOR_BGR2GRAY), Border)
 
-    def PreprocessAndSaveImages(self, InputPath, OutputPath):
+    def PreprocessAndSaveImages(self, InputPath, OutputPath, Border):
         LetterList = []
 
          # Check if path exist
@@ -98,7 +99,7 @@ class ImagePreprocessing:
             # Try to start the preprocessing
             try:
                 Image = cv2.imread(InputPath + "\\" + ImageFromList, 0)
-                [BinaryImage, Contours] = self.GetContours(Image)
+                [BinaryImage, Contours] = self.GetContours(Image, Border)
 
                 # Loop and process each contour
                 for Contour in Contours:
