@@ -48,4 +48,5 @@ You also need the `graphviz` executable for your OS.
 | Version   | Description                | Date       |
 |:---------:|:--------------------------:|:----------:|
 | 1.0       | First release              | 18.12.2017 | 
-| 1.1       | Improve "Predict" method   |            | 
+| 1.1       | Improve "Predict" method   | 31.12.2017 | 
+|           | and fix some bugs          |            | 
