@@ -45,8 +45,7 @@ You also need the `graphviz` executable for your OS.
 
 ## History
 
-| Version   | Description                | Date       |
-|:---------:|:--------------------------:|:----------:|
-| 1.0       | First release              | 18.12.2017 | 
-| 1.1       | Improve "Predict" method   | 31.12.2017 | 
-|           | and fix some bugs          |            | 
+| Version   | Description                                | Date       |
+|:---------:|:------------------------------------------:|:----------:|
+| 1.0       | First release                              | 18.12.2017 |
+| 1.1       | Improve "Predict" method and fix some bugs | 31.12.2017 | 
