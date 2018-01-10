@@ -2,6 +2,11 @@ import os
 import cv2
 import numpy
 import pydot
+import threading
+import pyautogui
+import pynput.mouse
+import pynput.keyboard
+import matplotlib.pyplot as plt
 from keras.optimizers import SGD
 from keras.utils import plot_model
 from keras.models import load_model
@@ -9,7 +14,6 @@ from keras.preprocessing.image import img_to_array
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import matplotlib.pyplot as plt
 
 from .Preprocessing import ImagePreprocessing
 from .LeNet import LeNet
@@ -17,14 +21,38 @@ from .ErrorCodes import ErrorCodes
 
 class CaptchaSolver(ErrorCodes):     
 
+    # OpenCV mouse click event
+    def Click(self, event, x, y, flags, param):
+        # Check mouse button
+        if(event == cv2.EVENT_LBUTTONDOWN):
+            self.refPt = [(x, y)]
+        elif(event == cv2.EVENT_LBUTTONUP):
+            self.refPt.append((x, y))
+
+            self.Selection = (self.refPt[0][0], self.refPt[0][1], self.refPt[1][0], self.refPt[1][1])
+            self.SelectionAvailable = True
+
+    # 
+    def On_Press(self, Key):
+        # Take a new screenshot
+        if(Key.char == "q"):
+            self.TakeScreenshot()
+
+    # Thread for keyboard listener
+    # Use own threading method because Listener.start() doesn´t work in a class
+    def KeyboardThread(self):
+        with pynput.keyboard.Listener(
+                on_press = self.On_Press,
+                ) as listener:listener.join()
+
     def __init__(self, Width, Height, Epochs, Depth = 1, Batchsize = 32, Bordersize = 8):
         # Print some project informations
-        print("+-------------------------------------------------------------------------------+")
-        print("|            Captcha-Breaker @ Daniel Kampert                                   |")      
-        print("| This is a private project for my 'KI & Softcomputing' lecture at HSD germany. |")
-        print("| For more informations visit www.github.com/Kampi or write me an E-Mail to     |")
-        print("| 'DanielKampert@kampis-elektroecke.de'                                         |")
-        print("+-------------------------------------------------------------------------------+")
+        print("+-------------------------------------------------------------------------------")
+        print("|            Captcha-Breaker @ Daniel Kampert                                  |")      
+        print("| This is a private project for my 'KI & Softcomputing' lecture at HSD germany.|")
+        print("| For more informations visit www.github.com/Kampi or write me an E-Mail to    |")
+        print("| 'DanielKampert@kampis-elektroecke.de'                                        |")
+        print("+------------------------------------------------------------------------------+")
 
         self.TrainingData = []
         self.TrainingLabel = []
@@ -32,20 +60,35 @@ class CaptchaSolver(ErrorCodes):
         self.TrainY = []
         self.TestX = []
         self.TestY = []
+        self.Predictions = []
+        self.refPt = []
         self.CorrectCounter = 0
         self.LetterCounter = 0
-        self.Predictions = []
-        self.LeNet = LeNet()
         self.Binarizer = 0
         self.History = 0
         self.Labelcount = 0
+        self.Selection = (0, 0)
+        self.MouseCoordinatesPressed = (0, 0)
+        self.MouseCoordinatesReleased = (0, 0)
+        self.LeNet = LeNet()
+        self.Mouse = pynput.mouse.Controller()
+        self.ImageProcessor = ImagePreprocessing(Width, Height)
+        self.ThreadKeyboard = threading.Thread(target = self.KeyboardThread)
         self.Width = Width
         self.Height = Height
         self.Depth = Depth
         self.Epochs = Epochs
         self.Batchsize = Batchsize
         self.Bordersize = Bordersize
-        self.ImageProcessor = ImagePreprocessing(Width, Height)
+        self.SelectionAvailable = False
+
+    def EnableLiveMode(self):
+        # Start the mouse thread
+        self.ThreadKeyboard.start()
+
+    def DisableLiveMode(self):
+        # Stop the mouse thread
+        self.ThreadKeyboard.stop()
 
     def PrintModel(self, OutputPath, ModelName = "Model.png"):
         # Check if the path exist
@@ -102,8 +145,8 @@ class CaptchaSolver(ErrorCodes):
         
         return ErrorCodes.NO_ERROR
 
-    def LoadModel(self, InputPath, ModelFileName = "Model.hdf5", LabelFileName = "Label"):
-        ModelPath = InputPath + "\\" + ModelFileName
+    def LoadModel(self, InputPath, ModelFileName = "Model", LabelFileName = "Label"):
+        ModelPath = InputPath + "\\" + ModelFileName + ".hdf5"
         LabelPath = InputPath + "\\" + LabelFileName
 
         # Check if the path exist
@@ -133,8 +176,8 @@ class CaptchaSolver(ErrorCodes):
 
         return ErrorCodes.NO_ERROR
 
-    def SaveModel(self, OutputPath, ModelFileName = "Model.hdf5", LabelFileName = "Label"):
-        ModelPath = OutputPath + "\\" + ModelFileName
+    def SaveModel(self, OutputPath, ModelFileName = "Model", LabelFileName = "Label"):
+        ModelPath = OutputPath + "\\" + ModelFileName + ".hdf5"
         LabelPath = OutputPath + "\\" + LabelFileName
 
         # Check if the model and the path exist
@@ -156,7 +199,7 @@ class CaptchaSolver(ErrorCodes):
                 # Close the file
                 LabelFile.close()
             else:
-                print("[ERROR] Unknown input path!")
+                print("[ERROR] Unknown output path for model!")
                 return ErrorCodes.UNKNOWN_PATH
         else:
             print("[ERROR] No model available!")
@@ -172,7 +215,7 @@ class CaptchaSolver(ErrorCodes):
         if(not(os.path.exists(InputPath))):
             # Check if path is a directory
             if(not(os.path.isdir(InputPath))):
-                print("[ERROR] Unknown input path!")
+                print("[ERROR] Unknown path to trainingdata!")
                 return ErrorCodes.UNKNOWN_PATH
 
         # Load the files from path
@@ -189,7 +232,7 @@ class CaptchaSolver(ErrorCodes):
 
             for [FileIndex, FileName] in enumerate(Files_Folder):
                 # Another status message
-                print("     [STATUS] Load file {}/{}".format(FileIndex + 1, len(FileName)))
+                print("     [STATUS] Load file {}/{}".format(FileIndex + 1, len(Files_Folder)))
 
                 # Load a image
                 Image = cv2.imread(OutputPath + "\\" + FolderName + "\\" + FileName, 0)
@@ -246,7 +289,7 @@ class CaptchaSolver(ErrorCodes):
     def GetCounter(self):
         return [self.LetterCounter, self.CorrectCounter]
 
-    def Predict(self, InputImagePath, DrawingColor = (255, 0, 0), Debug = False):
+    def Predict(self, Image, DrawingColor = (255, 0, 0), Debug = False):
         PredictetCaptcha = 0
         Predictions = []
         ColorImage = 0
@@ -256,20 +299,22 @@ class CaptchaSolver(ErrorCodes):
             try:
                 # Load image and find all contours
                 # Create a border with width around the image to prevent that the captcha touch the border of the image
-                Return = self.ImageProcessor.PreprocessImage(InputImagePath, self.Bordersize)
+                Return = self.ImageProcessor.PreprocessImage(Image, self.Bordersize)
                 if(type(Return) is int):
                     return Return
                 else:
                     [ColorImage, BinaryImage, Contours] = Return
 
                 if(Debug == True):
-                    print("[ACTION] Press 'y' if predicted letter is correct, or 'n' if it´s not.")
+                    print("[ACTION] Press <y> if predicted letter is correct, or <n> if it´s not.")
+                    # Increase the lettercounter by the number of contours
+                    self.LetterCounter += len(Contours)
 
-                # Increase the lettercounter by the number of contours to
-                self.LetterCounter += len(Contours)
+                # Add a 15px white Border under the image for the label
+                ColorImage = cv2.copyMakeBorder(ColorImage, 0, 30, 0, 0, cv2.BORDER_CONSTANT, value = (255, 255, 255))
 
                 # Loop over each contour
-                for Contour in Contours:
+                for [ContourNr, Contour] in enumerate(Contours):
                     # Extract each contour
                     (x, y, w, h) = cv2.boundingRect(Contour)
                     ROI = BinaryImage[y:y + h, x:x + w]
@@ -281,12 +326,12 @@ class CaptchaSolver(ErrorCodes):
                     # Create a new prediction
                     Prediction = self.LeNet.predict(Data, self.Batchsize)
                     PredictionClasses = self.Binarizer.classes_[Prediction.argmax(axis = 1)]
-            
-                    # Draw a rectangle around each letter if the letter is correct
+
+                    # Draw a rectangle around each letter
                     cv2.rectangle(ColorImage, (x - self.Bordersize - 4, y - self.Bordersize - 4), (x + w - self.Bordersize + 4, y + h - self.Bordersize + 4), DrawingColor, 2)
                     
                     # Add the label as text to the image
-                    cv2.putText(ColorImage, str(PredictionClasses[0].upper()), (x - self.Bordersize, ColorImage.shape[0] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.8, DrawingColor, 2)
+                    cv2.putText(ColorImage, str(PredictionClasses[0].upper()), (x, ColorImage.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, DrawingColor, 2)
 
                     # Show preview and activate check for prediction
                     if(Debug == True):
@@ -299,18 +344,18 @@ class CaptchaSolver(ErrorCodes):
                         # Key handling
                         Key = cv2.waitKey(0)
                         while((not(chr(Key) == 'y')) and (not(chr(Key) == 'n')) and (not(Key == 27))):
-                            print("[ERROR] Unknown key!")
+                            print("   [ERROR] Unknown key!")
                             Key = cv2.waitKey(0)
 
                         if(chr(Key) == 'y'):
-                            print("[INFO] Correct letter. Increase counter")
+                            print("   [INFO] Correct letter. Increase counter")
                             self.CorrectCounter += 1.0
 
                         elif(chr(Key) == 'n'):
-                            print("[INFO] Wrong letter. Skip.")
+                            print("   [INFO] Wrong letter. Skip.")
                         # Cancel classification on ESC-Key
                         elif(Key == 27):
-                            print("[INFO] Cancel captcha classification...")
+                            print("   [INFO] Cancel captcha classification...")
                             cv2.destroyWindow("Preview")
 
                             return ColorImage
@@ -332,4 +377,23 @@ class CaptchaSolver(ErrorCodes):
                 print("[INFO] No letter found!")
 
         return ColorImage
-            
+
+    def TakeScreenshot(self):
+        # Take a screenshot and convert it into a opencv image
+        Screenshot = pyautogui.screenshot()
+        Screenshot = cv2.cvtColor(numpy.array(Screenshot), cv2.COLOR_RGB2BGR)
+
+        # Create a new window
+        cv2.namedWindow("Preview")
+        cv2.setMouseCallback("Preview", self.Click)
+
+        while(self.SelectionAvailable == False):
+            cv2.imshow("Preview", Screenshot)
+            cv2.waitKey(1)
+
+        cv2.destroyWindow("Preview")
+
+        ROI = Screenshot[self.Selection[1]:self.Selection[3], self.Selection[0]:self.Selection[2]]
+        
+        # Use ROI for prediction
+        self.Predict(ROI)

@@ -33,6 +33,8 @@ $ python -m pip install git+git://github.com/fchollet/keras.git
 $ python -m pip install matplotlib
 $ python -m pip install graphviz
 $ python -m pip install pydot
+$ python -m pip install pyautogui
+$ python -m pip install pynput
 ```
 
 You also need the `graphviz` executable for your OS.

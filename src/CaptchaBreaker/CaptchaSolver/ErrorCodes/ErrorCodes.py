@@ -1,6 +1,6 @@
 
 class ErrorCodes():
-    NO_ERROR = 0,
+    NO_ERROR = 0
     NO_MODEL = -1
     UNKNOWN_PATH = -2
     NO_DATA = -3

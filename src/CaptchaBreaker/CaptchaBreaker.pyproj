@@ -5,18 +5,18 @@
     <ProjectGuid>f09d69af-208d-4d81-a590-5b507d4eebf5</ProjectGuid>
     <ProjectHome>
     </ProjectHome>
-    <StartupFile>..\CaptchaBreaker\CaptchaBreaker.py</StartupFile>
+    <StartupFile>CaptchaBreaker.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>CaptchaBreaker</Name>
-    <RootNamespace>CaptchaBreaker</RootNamespace>
+    <RootNamespace>.</RootNamespace>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterArguments>
     </InterpreterArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
-    <CommandLineArguments>-m demo -w load D:\Dropbox\GitHub\Machine-Learning\CaptchaBreaker\data\model -i D:\Dropbox\GitHub\Machine-Learning\CaptchaBreaker\data\test\900</CommandLineArguments>
+    <CommandLineArguments>-m demo -w train D:\Dropbox\GitHub\Machine-Learning\CaptchaBreaker\data\</CommandLineArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
