@@ -27,10 +27,15 @@ class ImagePreprocessing:
         else:
             return ErrorCodes.UNKNOWN_PATH
 
-    def GetContours(self, Image, Border, ErodeIterations = 1):
+    def GetContours(self, Image, Border, ErodeIterations = 1, Debug = False):
         # Return error if image is empty
         if(Image is None):
             return ErrorCodes.NO_IMAGE
+
+        # Show the original image
+        if(Debug):
+            cv2.imshow("Original image", Image)
+            cv2.waitKey(100)
 
         # Add border to the image
         if(Border > 0):
@@ -41,17 +46,29 @@ class ImagePreprocessing:
 
         # If the image is a white image, invert the image
         if(cv2.mean(BinaryImage)[0] > 128.0):
-            cv2.bitwise_not(BinaryImage, BinaryImage)
+            cv2.bitwise_not(BinaryImage.copy(), BinaryImage)
+
+        # Display the image after thesholding
+        if(Debug):
+            cv2.imshow("Threshold", BinaryImage)
+            cv2.waitKey(100)
 
         # Erode the image
-        BinaryImage = cv2.erode(BinaryImage, self.Kernel, iterations = ErodeIterations)
+        #BinaryImage = cv2.erode(BinaryImage, self.Kernel, iterations = ErodeIterations)
+        Morph = cv2.morphologyEx(BinaryImage, cv2.MORPH_OPEN, self.Kernel)
+        Morph = cv2.erode(Morph, self.Kernel, iterations = 1)
+
+        # Display the image when debug is active
+        if(Debug):
+            cv2.imshow("Morphological Transformation", Morph)
+            cv2.waitKey(100)
         
         # Search the image for contours
-        [im2, Contours, Hierarchy] = cv2.findContours(BinaryImage.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        [im2, Contours, Hierarchy] = cv2.findContours(Morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         return [BinaryImage, Contours]
 
-    def PreprocessImage(self, InputImage, Border = 8):
+    def PreprocessImage(self, InputImage, Border = 8, Debug = False):
         # Check the image type
         if(type(InputImage) is str):
             # Check if path exist
@@ -66,9 +83,9 @@ class ImagePreprocessing:
             return ErrorCodes.NO_DATA
 
         # Convert the image to grayscale, add a border and search contours
-        return [Image] + self.GetContours(cv2.cvtColor(Image, cv2.COLOR_BGR2GRAY), Border)
+        return [Image] + self.GetContours(cv2.cvtColor(Image, cv2.COLOR_BGR2GRAY), Border, Debug)
 
-    def PreprocessAndSaveImages(self, InputPath, OutputPath, Border):
+    def PreprocessAndSaveImages(self, InputPath, OutputPath, Border, Debug = False):
         LetterList = []
 
          # Check if path exist
@@ -130,7 +147,7 @@ class ImagePreprocessing:
             try:
                 ImagePath = InputPath + "\\" + ImageFromList
                 Image = cv2.imread(ImagePath, 0)
-                Return = self.GetContours(Image, Border)
+                Return = self.GetContours(Image, Border, Debug)
 
                 # Check if image is not empty
                 if(type(Return) is int):

@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -16,7 +17,7 @@
     <InterpreterArguments>
     </InterpreterArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
-    <CommandLineArguments>-m demo -w train D:\Dropbox\GitHub\Machine-Learning\CaptchaBreaker\data\</CommandLineArguments>
+    <CommandLineArguments>-m demo -w load C:\Users\Daniel.Kampert\Desktop\CaptchaBreaker\data\model -i C:\Users\Daniel.Kampert\Desktop\CaptchaBreaker\data\noise\100_dB -debug True</CommandLineArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>

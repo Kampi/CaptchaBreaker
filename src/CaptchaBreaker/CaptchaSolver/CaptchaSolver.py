@@ -81,6 +81,20 @@ class CaptchaSolver(ErrorCodes):
         self.Batchsize = Batchsize
         self.Bordersize = Bordersize
         self.SelectionAvailable = False
+        self.Debug = False
+
+    def __del__(self):
+        # Close all windows
+        cv2.destroyAllWindows()
+
+    def SetDebugOption(self, DebugStatus):
+        # Enable or disable debug mode
+        self.Debug = DebugStatus
+
+        if(self.Debug):
+            print("[DEBUG] Enable debug mode.")
+        else:
+            print("[DEBUG] Disable debug mode.")
 
     def EnableLiveMode(self):
         # Start the mouse thread
@@ -209,7 +223,7 @@ class CaptchaSolver(ErrorCodes):
 
     def LoadTrainingData(self, InputPath, OutputPath, SplitRatio = 0.25, RandomState = 0):
         # Preprocess the input images
-        self.ImageProcessor.PreprocessAndSaveImages(InputPath, OutputPath, self.Bordersize)
+        self.ImageProcessor.PreprocessAndSaveImages(InputPath, OutputPath, self.Bordersize, self.Debug)
 
         # Check if path exist
         if(not(os.path.exists(InputPath))):
@@ -256,7 +270,7 @@ class CaptchaSolver(ErrorCodes):
         (self.TrainX, self.TestX, self.TrainY, self.TestY) = train_test_split(self.TrainingData, self.TrainingLabel, test_size = SplitRatio, random_state = RandomState)
 
         # Preprocess the labels
-        print("[STATUS] Found {} label".format(self.Labelcount))
+        print("[INFO] Found {} label".format(self.Labelcount))
         print("[STATUS] Convert label...")
         self.Binarizer = LabelBinarizer().fit(self.TrainingLabel)
         self.TrainY = self.Binarizer.transform(self.TrainY)
@@ -270,6 +284,8 @@ class CaptchaSolver(ErrorCodes):
             print("[STATUS] Build LeNet...")
             self.LeNet = self.LeNet.build(self.Width, self.Height, self.Depth, self.Labelcount)
             self.LeNet.compile(loss = "categorical_crossentropy", optimizer = SGD(lr = 0.01), metrics = ["accuracy"])
+
+            print("[INFO] Found {} images".format(len(self.TrainingData)))
 
             print("[STATUS] Train network...")
             self.History = self.LeNet.fit(self.TrainX, self.TrainY, validation_data = (self.TestX, self.TestY), batch_size = self.Batchsize, epochs = self.Epochs, verbose = 1)
@@ -289,32 +305,39 @@ class CaptchaSolver(ErrorCodes):
     def GetCounter(self):
         return [self.LetterCounter, self.CorrectCounter]
 
-    def Predict(self, Image, DrawingColor = (255, 0, 0), Debug = False):
-        PredictetCaptcha = 0
+    def Predict(self, Image, DrawingColor = (0, 0, 255)):
         Predictions = []
         ColorImage = 0
+
+        # Reset all counter
+        self.ResetCounter()
 
         if(self.LeNet != 0):
             # Error handling
             try:
                 # Load image and find all contours
                 # Create a border with width around the image to prevent that the captcha touch the border of the image
-                Return = self.ImageProcessor.PreprocessImage(Image, self.Bordersize)
+                Return = self.ImageProcessor.PreprocessImage(Image, self.Bordersize, self.Debug)
                 if(type(Return) is int):
                     return Return
                 else:
                     [ColorImage, BinaryImage, Contours] = Return
 
-                if(Debug == True):
-                    print("[ACTION] Press <y> if predicted letter is correct, or <n> if it´s not.")
-                    # Increase the lettercounter by the number of contours
-                    self.LetterCounter += len(Contours)
+                # Display the original image
+                cv2.imshow("Captcha", ColorImage)
+                cv2.waitKey(2000)
+                cv2.destroyWindow("Captcha")
+
+                if(self.Debug == True):
+                    print("[DEBUG] Press <y> if predicted letter is correct, or <n> if it´s not.")
 
                 # Add a 15px white Border under the image for the label
                 ColorImage = cv2.copyMakeBorder(ColorImage, 0, 30, 0, 0, cv2.BORDER_CONSTANT, value = (255, 255, 255))
 
                 # Loop over each contour
                 for [ContourNr, Contour] in enumerate(Contours):
+                    IsPredictionValid = False
+
                     # Extract each contour
                     (x, y, w, h) = cv2.boundingRect(Contour)
                     ROI = BinaryImage[y:y + h, x:x + w]
@@ -325,40 +348,60 @@ class CaptchaSolver(ErrorCodes):
 
                     # Create a new prediction
                     Prediction = self.LeNet.predict(Data, self.Batchsize)
-                    PredictionClasses = self.Binarizer.classes_[Prediction.argmax(axis = 1)]
+                    PredictionIndex = int(Prediction.argmax(axis = 1))
+                    PredictionAccuracy = round(Prediction[0][PredictionIndex] * 100.0, 3)
+
+                    # Filter predictions
+                    PredictedLetter = ""
+                    if(PredictionAccuracy > 50.0):
+                        IsPredictionValid = True
+                        PredictedLetter = self.Binarizer.classes_[PredictionIndex][0].upper()
+                    else:
+                        PredictedLetter = "?"
 
                     # Draw a rectangle around each letter
                     cv2.rectangle(ColorImage, (x - self.Bordersize - 4, y - self.Bordersize - 4), (x + w - self.Bordersize + 4, y + h - self.Bordersize + 4), DrawingColor, 2)
                     
                     # Add the label as text to the image
-                    cv2.putText(ColorImage, str(PredictionClasses[0].upper()), (x, ColorImage.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, DrawingColor, 2)
+                    cv2.putText(ColorImage, PredictedLetter, (x, ColorImage.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, DrawingColor, 2)
 
-                    # Show preview and activate check for prediction
-                    if(Debug == True):
+                    # Show preview and activate check for prediction. Filter all predictions which don´t meat the requirements
+                    # Also count the wrong and correct predicted letters to get a feedback about the general accuracy
+                    if(self.Debug == True):
                         # Print prediction results
-                        print("[INFO] Prediction: {}".format(Prediction.argmax(axis = 1)))
-                        print("[INFO] Label: {}".format(PredictionClasses))
+                        print("[DEBUG] Class: {}".format(PredictionIndex))
+
+                        if(IsPredictionValid):
+                            print("[DEBUG] Label: {} - Accuracy: {}%".format(PredictedLetter, PredictionAccuracy))
+                        else:
+                            print("[DEBUG] Unknown label!")
 
                         cv2.imshow("Preview", ROI)
 
                         # Key handling
-                        Key = cv2.waitKey(0)
-                        while((not(chr(Key) == 'y')) and (not(chr(Key) == 'n')) and (not(Key == 27))):
-                            print("   [ERROR] Unknown key!")
+                        if(PredictionAccuracy > 50.0):
                             Key = cv2.waitKey(0)
+                            while((not(chr(Key) == 'y')) and (not(chr(Key) == 'n')) and (not(Key == 27))):
+                                print("   [ERROR] Unknown key!")
+                                Key = cv2.waitKey(0)
 
-                        if(chr(Key) == 'y'):
-                            print("   [INFO] Correct letter. Increase counter")
-                            self.CorrectCounter += 1.0
+                            if(chr(Key) == 'y'):
+                                print("   [DEBUG] Correct letter. Increase counter")
+                                self.CorrectCounter += 1.0
 
-                        elif(chr(Key) == 'n'):
-                            print("   [INFO] Wrong letter. Skip.")
-                        # Cancel classification on ESC-Key
-                        elif(Key == 27):
-                            print("   [INFO] Cancel captcha classification...")
-                            cv2.destroyWindow("Preview")
+                            elif(chr(Key) == 'n'):
+                                print("   [DEBUG] Wrong letter. Skip.")
+                            # Cancel classification on ESC-Key
+                            elif(Key == 27):
+                                print("   [DEBUG] Cancel captcha classification...")
+                                cv2.destroyWindow("Preview")
 
-                            return ColorImage
+                                return ColorImage
+
+                            # Increase the lettercounter
+                            self.LetterCounter += 1
+                        else:
+                            Key = cv2.waitKey(1000)
 
                         cv2.destroyWindow("Preview")
 
@@ -368,13 +411,13 @@ class CaptchaSolver(ErrorCodes):
             return ColorImage
 
         # Print prediction results in debug mode
-        if(Debug == True):
-            print("[INFO] Predict {} of {} letters correct.".format(int(self.CorrectCounter), self.LetterCounter))
+        if(self.Debug == True):
+            print("[DEBUG] Predict {} of {} letters correct.".format(int(self.CorrectCounter), self.LetterCounter))
 
             if(self.LetterCounter != 0):
-                print("[INFO] Prediction rate {}%".format(round(self.CorrectCounter / float(self.LetterCounter) * 100.0), 3))
+                print("[DEBUG] Prediction rate {}%".format(round(self.CorrectCounter / float(self.LetterCounter) * 100.0), 3))
             else:
-                print("[INFO] No letter found!")
+                print("[DEBUG] No letter found!")
 
         return ColorImage
 
