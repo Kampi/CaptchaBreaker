@@ -17,7 +17,7 @@
     <InterpreterArguments>
     </InterpreterArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
-    <CommandLineArguments>-m demo -w load C:\Users\Daniel.Kampert\Desktop\CaptchaBreaker\data\model -i C:\Users\Daniel.Kampert\Desktop\CaptchaBreaker\data\noise\100_dB -debug True</CommandLineArguments>
+    <CommandLineArguments>-m demo -w load D:\Dropbox\GitHub\Machine-Learning\CaptchaBreaker\data\model\mixed -i D:\Dropbox\GitHub\Machine-Learning\CaptchaBreaker\data\download\test\16.jpg</CommandLineArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>

@@ -20,7 +20,7 @@ from .LeNet import LeNet
 from .ErrorCodes import ErrorCodes
 
 class CaptchaSolver(ErrorCodes):     
-
+    
     # OpenCV mouse click event
     def Click(self, event, x, y, flags, param):
         # Check mouse button
@@ -45,7 +45,7 @@ class CaptchaSolver(ErrorCodes):
                 on_press = self.On_Press,
                 ) as listener:listener.join()
 
-    def __init__(self, Width, Height, Epochs, Depth = 1, Batchsize = 32, Bordersize = 8):
+    def __init__(self, Width = 28, Height = 28, Epochs = 30, Depth = 1, Batchsize = 32, Bordersize = 8):
         # Print some project informations
         print("+-------------------------------------------------------------------------------")
         print("|            Captcha-Breaker @ Daniel Kampert                                  |")      
@@ -88,6 +88,10 @@ class CaptchaSolver(ErrorCodes):
         cv2.destroyAllWindows()
 
     def SetDebugOption(self, DebugStatus):
+        # Check if type is bool
+        if(not(type(DebugStatus) is bool)):
+            raise ValueError("Value must be boolean!")
+
         # Enable or disable debug mode
         self.Debug = DebugStatus
 

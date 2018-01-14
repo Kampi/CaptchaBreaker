@@ -11,7 +11,7 @@ if(sys.version_info <= (3, 6, 2)):
     print("Version not supported!")
     exit()
 
-Solver = CaptchaSolver(28, 28, 30)
+Solver = CaptchaSolver()
 
 # Set commandline arguments
 ArgParser = argparse.ArgumentParser()
