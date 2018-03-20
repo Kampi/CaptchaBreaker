@@ -15,7 +15,7 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
-from .Preprocessing import ImagePreprocessing
+from .Preprocessing.CaptchaImagePreprocessor import CaptchaImagePreprocessor
 from .LeNet import LeNet
 from .ErrorCodes import ErrorCodes
 
@@ -72,7 +72,7 @@ class CaptchaSolver(ErrorCodes):
         self.MouseCoordinatesReleased = (0, 0)
         self.LeNet = LeNet()
         self.Mouse = pynput.mouse.Controller()
-        self.ImageProcessor = ImagePreprocessing(Width, Height)
+        self.ImageProcessor = CaptchaImagePreprocessor(Width, Height)
         self.ThreadKeyboard = threading.Thread(target = self.KeyboardThread)
         self.Width = Width
         self.Height = Height

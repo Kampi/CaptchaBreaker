@@ -42,8 +42,8 @@
     <Compile Include="CaptchaSolver\LeNet\__init__.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="CaptchaSolver\Preprocessing\Preprocessor.py" />
-    <Compile Include="CaptchaSolver\Preprocessing\__init__.py" />
+    <Compile Include="CaptchaSolver\Preprocessing\CaptchaImagePreprocessor\CaptchaImagePreprocessor.py" />
+    <Compile Include="CaptchaSolver\Preprocessing\CaptchaImagePreprocessor\__init__.py" />
     <Compile Include="CaptchaSolver\__init__.py">
       <SubType>Code</SubType>
     </Compile>
@@ -53,6 +53,7 @@
     <Folder Include="CaptchaSolver\LeNet\" />
     <Folder Include="CaptchaSolver\ErrorCodes\" />
     <Folder Include="CaptchaSolver\Preprocessing\" />
+    <Folder Include="CaptchaSolver\Preprocessing\CaptchaImagePreprocessor\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
